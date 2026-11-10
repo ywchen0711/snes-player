@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>超任模擬器 SNES Player</title>
+<meta name="description" content="在瀏覽器裡玩你自己擁有的超級任天堂遊戲卡帶檔。檔案只留在你的裝置上，不會上傳。Play SNES ROMs you own, right in the browser. Your file never leaves your device.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%221%22 y=%224%22 width=%2214%22 height=%228%22 rx=%224%22 fill=%22%23c8c4d8%22/%3E%3Ccircle cx=%2211%22 cy=%227%22 r=%221.3%22 fill=%22%23d8404c%22/%3E%3Ccircle cx=%2213%22 cy=%229%22 r=%221.3%22 fill=%22%233c64d8%22/%3E%3Crect x=%223%22 y=%227.3%22 width=%224%22 height=%221.4%22 fill=%22%23444%22/%3E%3Crect x=%224.3%22 y=%226%22 width=%221.4%22 height=%224%22 fill=%22%23444%22/%3E%3C/svg%3E">
+<link rel="preload" href="fonts/Cubic_11.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  @font-face { font-family: Cubic11; src: url(fonts/Cubic_11.woff2) format('woff2'); font-display: swap; }
+  :root { --bg: #17132a; --panel: #241d42; --edge: #4a3c86; --ink: #ece8ff; --dim: #a59fc8; --accent: #8c6cf0; --a: #d8404c; --b: #e8c838; --x: #3c64d8; --y: #38a858; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: Cubic11, 'Microsoft JhengHei', sans-serif; }
+  body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 16px; }
+  header { width: 100%; max-width: 880px; display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  h1 { font-size: 26px; margin: 0; letter-spacing: 1px; flex: 1; }
+  h1 small { display: block; font-size: 13px; color: var(--dim); letter-spacing: 0; margin-top: 4px; }
+  .dots { display: grid; grid-template-columns: repeat(3, 14px); grid-template-rows: repeat(3, 14px); gap: 2px; }
+  .dots i { border-radius: 50%; }
+  button, .btn { font: inherit; color: var(--ink); background: var(--panel); border: 2px solid var(--edge); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button:hover, .btn:hover { border-color: var(--accent); }
+  main { width: 100%; max-width: 880px; }
+  #pick { border: 3px dashed var(--edge); border-radius: 14px; background: var(--panel); padding: 34px 20px; text-align: center; transition: border-color .15s, background .15s; }
+  #pick.over { border-color: var(--accent); background: #2e2558; }
+  #pick p { margin: 10px 0; color: var(--dim); line-height: 1.6; }
+  #pick .big { font-size: 20px; color: var(--ink); }
+  #pick .btn { display: inline-block; margin-top: 10px; background: var(--accent); border-color: var(--accent); color: #fff; font-size: 18px; padding: 12px 22px; }
+  #file { display: none; }
+  #err { color: #ff8a8a; min-height: 1.4em; }
+  #stage { display: none; }
+  #stage.on { display: block; }
+  #wrap { width: 100%; aspect-ratio: 8 / 7; max-height: calc(100vh - 140px); margin: 0 auto; background: #000; border: 3px solid var(--edge); border-radius: 10px; overflow: hidden; }
+  #game { width: 100%; height: 100%; }
+  .bar { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .bar span { color: var(--dim); flex: 1; min-width: 160px; word-break: break-all; }
+  section { margin-top: 18px; background: var(--panel); border: 2px solid var(--edge); border-radius: 12px; padding: 14px 16px; line-height: 1.7; }
+  section h2 { font-size: 17px; margin: 0 0 8px; }
+  table { border-collapse: collapse; width: 100%; }
+  td { padding: 4px 6px; border-top: 1px solid #3a3168; vertical-align: top; }
+  td:first-child { color: var(--dim); white-space: nowrap; width: 40%; }
+  kbd { font: inherit; background: #120e22; border: 1px solid var(--edge); border-radius: 4px; padding: 0 5px; }
+  .note { color: var(--dim); font-size: 14px; }
+  a { color: #b8a4ff; }
+  @media (max-width: 520px) { h1 { font-size: 21px; } #pick { padding: 24px 12px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="dots" aria-hidden="true"><i></i><i style="background:var(--x)"></i><i></i><i style="background:var(--y)"></i><i></i><i style="background:var(--a)"></i><i></i><i style="background:var(--b)"></i><i></i></div>
+  <h1 data-zh="超任模擬器" data-en="SNES Player">超任模擬器<small data-zh="在瀏覽器裡玩你自己的超任遊戲" data-en="Play your own Super NES games in the browser">在瀏覽器裡玩你自己的超任遊戲</small></h1>
+  <button id="lang" type="button">English</button>
+</header>
+<main>
+  <div id="pick">
+    <p class="big" data-zh="把遊戲檔拖到這裡" data-en="Drop a game file here">把遊戲檔拖到這裡</p>
+    <p data-zh="支援 .sfc、.smc（也可以是裝著它們的 .zip）" data-en="Accepts .sfc and .smc files (or a .zip holding one)">支援 .sfc、.smc（也可以是裝著它們的 .zip）</p>
+    <label class="btn" for="file" data-zh="選擇遊戲檔" data-en="Choose a game file">選擇遊戲檔</label>
+    <input id="file" type="file" accept=".sfc,.smc,.swc,.fig,.zip">
+    <p id="err"></p>
+    <p class="note" data-zh="檔案只在你的瀏覽器裡執行，不會上傳到任何地方。這裡不提供任何遊戲，請只使用你合法擁有的遊戲（例如自己卡帶備份的檔案，或作者免費公開的自製遊戲）。" data-en="The file runs inside your browser and is never uploaded. No games are provided here: please only use games you legally own, such as a backup of your own cartridge or a homebrew game its author shares for free.">檔案只在你的瀏覽器裡執行，不會上傳到任何地方。這裡不提供任何遊戲，請只使用你合法擁有的遊戲（例如自己卡帶備份的檔案，或作者免費公開的自製遊戲）。</p>
+  </div>
+  <div id="stage">
+    <div id="wrap"><div id="game"></div></div>
+    <div class="bar"><span id="name"></span><button id="again" type="button" data-zh="換一個遊戲" data-en="Load another game">換一個遊戲</button></div>
+  </div>
+  <section>
+    <h2 data-zh="操作" data-en="Controls">操作</h2>
+    <table>
+      <tr><td data-zh="方向鍵" data-en="D-pad">方向鍵</td><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd></td></tr>
+      <tr><td>A / B / X / Y</td><td><kbd>Z</kbd> / <kbd>X</kbd> / <kbd>A</kbd> / <kbd>S</kbd></td></tr>
+      <tr><td>L / R</td><td><kbd>Q</kbd> / <kbd>E</kbd></td></tr>
+      <tr><td>Start / Select</td><td><kbd>Enter</kbd> / <kbd>V</kbd></td></tr>
+      <tr><td data-zh="手把" data-en="Gamepad">手把</td><td data-zh="直接插上就能用" data-en="Plug it in and play">直接插上就能用</td></tr>
+      <tr><td data-zh="手機、平板" data-en="Phone, tablet">手機、平板</td><td data-zh="畫面上會出現虛擬按鍵" data-en="On-screen buttons appear">畫面上會出現虛擬按鍵</td></tr>
+    </table>
+    <p class="note" data-zh="遊戲畫面下方的選單可以全螢幕、即時存檔／讀檔、改按鍵和調整音量。存檔留在這個瀏覽器裡。" data-en="The menu under the game has full screen, save and load states, key settings and volume. Saves stay in this browser.">遊戲畫面下方的選單可以全螢幕、即時存檔／讀檔、改按鍵和調整音量。存檔留在這個瀏覽器裡。</p>
+  </section>
+  <section class="note">
+    <span data-zh="模擬器：" data-en="Emulator: ">模擬器：</span><a href="https://emulatorjs.org/" target="_blank" rel="noopener">EmulatorJS</a> 4.2.3 (GPL-3.0) <span data-zh="與" data-en="with the">與</span> <a href="https://github.com/snes9xgit/snes9x" target="_blank" rel="noopener">Snes9x</a> <span data-zh="核心（非商業授權）。" data-en="core (non-commercial licence).">核心（非商業授權）。</span>
+    <span data-zh="Super Nintendo 是任天堂的商標，本頁與任天堂無關。" data-en="Super Nintendo is a trademark of Nintendo; this page is not affiliated with Nintendo.">Super Nintendo 是任天堂的商標，本頁與任天堂無關。</span>
+  </section>
+</main>
+<script>
+  // ---- language: Chinese or English, remembered in this browser
+  let lang = 'zh';
+  try { lang = localStorage.getItem('snesplayer-lang') || (navigator.language.startsWith('zh') ? 'zh' : 'en'); } catch (e) { /* private mode */ }
+  function applyLang() {
+    document.documentElement.lang = lang === 'zh' ? 'zh-Hant' : 'en';
+    for (const el of document.querySelectorAll('[data-zh]')) {
+      const small = el.querySelector('small');
+      el.firstChild.nodeValue = el.dataset[lang];
+      if (small) el.appendChild(small);
+    }
+    document.getElementById('lang').textContent = lang === 'zh' ? 'English' : '中文';
+  }
+  document.getElementById('lang').onclick = () => { lang = lang === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('snesplayer-lang', lang); } catch (e) { /* ignore */ } applyLang(); };
+  applyLang();
+
+  // ---- picking a file: the button or a drop
+  const pick = document.getElementById('pick'), err = document.getElementById('err');
+  const OK = /\.(sfc|smc|swc|fig|zip)$/i;
+  function choose(file) {
+    if (!file) return;
+    if (!OK.test(file.name)) { err.textContent = lang === 'zh' ? '這不像超任的遊戲檔（.sfc／.smc）。' : "That doesn't look like a SNES game file (.sfc / .smc)."; return; }
+    if (file.size > 12 * 1024 * 1024) { err.textContent = lang === 'zh' ? '檔案太大了，超任遊戲通常不到 6MB。' : 'That file is too big; SNES games are usually under 6 MB.'; return; }
+    start(file);
+  }
+  document.getElementById('file').onchange = (e) => choose(e.target.files[0]);
+  pick.addEventListener('dragover', (e) => { e.preventDefault(); pick.classList.add('over'); });
+  pick.addEventListener('dragleave', () => pick.classList.remove('over'));
+  pick.addEventListener('drop', (e) => { e.preventDefault(); pick.classList.remove('over'); choose(e.dataTransfer.files[0]); });
+  document.getElementById('again').onclick = () => location.reload();
+
+  // ---- start the emulator with the chosen file; nothing is sent anywhere
+  function start(file) {
+    pick.style.display = 'none';
+    document.getElementById('stage').classList.add('on');
+    document.getElementById('name').textContent = file.name;
+    window.EJS_player = '#game';
+    window.EJS_core = 'snes';
+    window.EJS_gameUrl = file;
+    window.EJS_gameName = file.name.replace(/\.[^.]+$/, '');
+    window.EJS_pathtodata = 'https://cdn.emulatorjs.org/4.2.3/data/';
+    window.EJS_startOnLoaded = true;
+    window.EJS_color = '#8c6cf0';
+    window.EJS_language = lang === 'zh' ? 'zh-CN' : 'en-US';
+    const s = document.createElement('script');
+    s.src = 'https://cdn.emulatorjs.org/4.2.3/data/loader.js';
+    s.onerror = () => { err.textContent = lang === 'zh' ? '模擬器載入失敗，請檢查網路後再試一次。' : "The emulator couldn't load. Check your connection and try again."; pick.style.display = ''; };
+    document.body.appendChild(s);
+  }
+</script>
+</body>
+</html>
