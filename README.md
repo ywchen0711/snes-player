@@ -9,6 +9,13 @@ Play Super NES games you own, right in the browser. Pick or drop a `.sfc` / `.sm
 - **Controls:** arrow keys; Z / X / A / S for A / B / X / Y; Q / E for L / R; Enter for Start; V for Select. A gamepad works when plugged in, and phones and tablets get on-screen buttons.
 - **Menu:** under the game there is full screen, save and load states, key settings and volume. Saves stay in your browser.
 
+## iPhone and iPad
+
+- Choosing a file opens the Files app with every file shown (iOS does not know the .sfc / .smc types).
+- While a game runs on a phone or tablet it fills the screen, with EmulatorJS's on-screen pad (on iPad too) and a small button to change game.
+- Sound starts with your first tap. It keeps playing with the ring/silent switch on silent (iOS 17 and later), and comes back after a call, Siri or the lock screen.
+- **Add to Home Screen** from Safari's Share menu to play full screen with its own icon.
+
 ## Credits
 
 - [EmulatorJS](https://emulatorjs.org/) 4.2.3 (GPL-3.0), loaded from its CDN, with the [Snes9x](https://github.com/snes9xgit/snes9x) core (Snes9x licence: free for non-commercial use).
